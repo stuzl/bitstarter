@@ -81,8 +81,7 @@ if(require.main == module) {
 clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', 
 clone(assertFileExists), HTMLFILE_DEFAULT)
-        .option('-u, --url <url>', 'url to index.html',
-clone(assertFileExists))
+        .option('-u, --url <url>', 'url to index.html')
         .parse(process.argv);
     var checkJson = checkHtmlFileOrURL(program.file, program.checks,program.url);
 } else {
