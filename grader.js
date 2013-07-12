@@ -15,9 +15,14 @@ http://tjholowaychuk.com/post/9103188408/commander-js-nodejs-command-line-interf
    - http://en.wikipedia.org/wiki/JSON
    - https://developer.mozilla.org/en-US/docs/JSON
    - https://developer.mozilla.org/en-US/docs/JSON#JSON_in_Firefox_2 
-*/ var fs = require('fs'); var program = require('commander'); var 
-cheerio = require('cheerio'); var HTMLFILE_DEFAULT = "index.html"; 
-var CHECKSFILE_DEFAULT = "checks.json"; var assertFileExists = 
+*/
+var fs = require('fs');
+var restler = require('restler')
+var program = require('commander');
+var cheerio = require('cheerio');
+var HTMLFILE_DEFAULT = "index.html";
+var CHECKSFILE_DEFAULT = "checks.json";
+var assertFileExists =
 function(infile) {
     var instr = infile.toString();
     if(!fs.existsSync(instr)) {
@@ -33,15 +38,38 @@ var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 var checkHtmlFile = function(htmlfile, checksfile) {
-    $ = cheerioHtmlFile(htmlfile);
+    return checkHtml(cheerioHtmlFile(htmlfile),checksfile);
+};
+var checkHtml = function(html, checksfile) {
     var checks = loadChecks(checksfile).sort();
     var out = {};
     for(var ii in checks) {
-        var present = $(checks[ii]).length > 0;
+        var present = html(checks[ii]).length > 0;
         out[checks[ii]] = present;
     }
-    return out;
+    var outJson = JSON.stringify(out, null, 4);
+    console.log(outJson);
 };
+var checkHtmlFileOrURL = function(htmlfile,checkfile,url) {
+    if(url){
+        var response2check = buildfn(checkfile);
+        restler.get(url).on('complete',response2check);
+    } else {
+        checkHtmlFile(htmlfile,checkfile)
+    }
+}
+
+var buildfn = function(checkFile) {
+    var response2check = function(result, response) {
+        if (result instanceof Error) {
+            console.error('Error: ' + util.format(response.message));
+        } else {
+            checkHtml(cheerio.load(result),checkFile);
+        }
+    };
+    return response2check;
+};
+
 var clone = function(fn) {
     // Workaround for commander.js issue.
     // http://stackoverflow.com/a/6772648
@@ -53,10 +81,10 @@ if(require.main == module) {
 clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', 
 clone(assertFileExists), HTMLFILE_DEFAULT)
+        .option('-u, --url <url>', 'url to index.html',
+clone(assertFileExists))
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+    var checkJson = checkHtmlFileOrURL(program.file, program.checks,program.url);
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
